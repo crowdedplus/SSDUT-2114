@@ -1,0 +1,255 @@
+/*2.2 线索二叉树
+
+    ThreadBinaryTreeNode<T>* buildPreAndIn(string prestr, string instr);				   //2.2-a 实现由先序、中序序列构造二叉树的算法
+    void InThread(ThreadBinaryTreeNode<T>* &root, ThreadBinaryTreeNode<T>* &pre);		   //2.2-b 中序线索化二叉树
+    void InOrder(ThreadBinaryTreeNode<T>* root);										   //2.2-c 中序遍历线索二叉树
+    void InsertNode(ThreadBinaryTreeNode<T>* pointer, ThreadBinaryTreeNode<T>* newPointer);//2.2-d 中序线索二叉树的插入操作
+
+*/
+#include <iostream>
+#include <string>
+using namespace std;
+
+template <class T>
+class ThreadBinaryTree;
+
+template <class T>
+class ThreadBinaryTreeNode {
+private:
+
+    ThreadBinaryTreeNode<T>* leftChild;
+    ThreadBinaryTreeNode<T>* rightChild;
+    T element;
+public:
+    int leftTag, rightTag;
+    friend class ThreadBinaryTree<T>;
+    ThreadBinaryTreeNode() //默认构造函数
+    {
+        leftChild = NULL;
+        rightChild = NULL;
+        leftTag = 0;
+        rightTag = 0;
+    }
+    ThreadBinaryTreeNode(const T& ele) //给定数据的构造函数
+    {
+        element = ele;
+        leftChild = NULL;
+        rightChild = NULL;
+        leftTag = 0;
+        rightTag = 0;
+    }
+    ThreadBinaryTreeNode(const T& ele, ThreadBinaryTreeNode<T>* l, ThreadBinaryTreeNode<T>* r)
+    {
+        element = ele;
+        leftChild = l;
+        rightChild = r;
+        leftTag = 0;
+        rightTag = 0;
+    }
+    ThreadBinaryTreeNode<T>* getLeftChild() const
+    {
+        return leftChild;
+    }
+    ThreadBinaryTreeNode<T>* getRightChild() const
+    {
+        return rightChild;
+    }
+    void setLeftChild(ThreadBinaryTreeNode<T>* l)
+    {
+        leftChild = l;
+    }
+    void setRightChild(ThreadBinaryTreeNode<T>* r)
+    {
+        rightChild = r;
+    }
+    T getValue() const
+    {
+        return element;
+    }
+    void setValue(const T& val)
+    {
+        element = val;
+    }
+
+};
+template <class T>
+class ThreadBinaryTree {
+private:
+    ThreadBinaryTreeNode<T>* root;
+
+public:
+    ThreadBinaryTree()
+    {
+        root = NULL;
+    }
+    ThreadBinaryTree(ThreadBinaryTreeNode<T>*& r)
+    {
+        root = r;
+    }
+    ~ThreadBinaryTree()
+    {
+        deleteTree(root);
+    }
+
+    ThreadBinaryTreeNode<T>* getRoot();
+    ThreadBinaryTreeNode<T>* buildPreAndIn(string prestr, string instr); //2.2-a 实现由先序、中序序列构造二叉树的算法
+    void InThread(ThreadBinaryTreeNode<T>* root, ThreadBinaryTreeNode<T>*& pre); //2.2-b 中序线索化二叉树
+    void createInThread(ThreadBinaryTreeNode<T>* p); //建立中序二叉搜索树
+    void InOrder(ThreadBinaryTreeNode<T>* root); //2.2-c 中序遍历线索二叉树
+    void InsertNode(ThreadBinaryTreeNode<T>* pointer, ThreadBinaryTreeNode<T>* newPointer); //2.2-d 中序线索二叉树的插入操作
+    void deleteTree(ThreadBinaryTreeNode<T>* root); //清空树
+    void visit(ThreadBinaryTreeNode<T>* current);
+};
+
+template <class T>
+ThreadBinaryTreeNode<T>* ThreadBinaryTree<T>::getRoot()
+{
+    return root;
+}
+/*
+TODO:2.2-a 实现由先序、中序序列构造二叉树的算法
+參數說明：prestr為先序序列， instr為中序序列
+返回值說明：如果先序序列長度為0，則返回NULL，否則，返回二叉樹的根節點
+ */
+template <class T>
+ThreadBinaryTreeNode<T>* ThreadBinaryTree<T>::buildPreAndIn(string prestr, string instr) {
+    if (prestr.length() == 0) {
+        return NULL;
+    }
+    else {
+        int length = instr.length(), root = length, at = prestr.length();
+        for (int i = 0; i < length; ++i) {
+            int find = prestr.find(instr[i], 0);
+            if (find < at) {
+                at = find;
+                root = i;
+            }
+        }
+        ThreadBinaryTreeNode<T>* getRoot = nullptr;
+        if (length!= 0) {
+            getRoot = new ThreadBinaryTreeNode<T>(instr[root], buildPreAndIn(prestr, instr.substr(0, root)), buildPreAndIn(prestr, instr.substr(root+1,length-root-1)));
+        }
+        else {
+            return NULL;
+        }
+        return  getRoot;
+    }
+}
+
+//建立中序二叉搜索树
+template <class T>
+void ThreadBinaryTree<T>::createInThread(ThreadBinaryTreeNode<T>* p)
+{
+    ThreadBinaryTreeNode<T>* pre = NULL;
+    if (p != NULL) {
+        InThread(p, pre);
+        pre->rightChild = NULL;
+        pre->rightTag = 1;
+    }
+}
+/*
+TODO：2.2-b 中序线索化二叉树
+ */
+template <class T>
+void ThreadBinaryTree<T>::InThread(ThreadBinaryTreeNode<T>* root, ThreadBinaryTreeNode<T>*& pre)
+{
+    ThreadBinaryTreeNode<T>* at=root;
+    if (at != NULL) {
+        InThread(at->getLeftChild(), pre);
+        if (at->getLeftChild() == NULL) {
+            at->setLeftChild(pre);
+            at->leftTag = 1;
+        }
+        if ((pre != NULL) && (pre->getRightChild() == NULL)) {
+            pre->setRightChild(at);
+            pre->rightTag = 1;
+        }
+        pre = at;
+        InThread(at->getRightChild(), pre);
+    }
+}
+/*
+TODO: 2.2-c 中序遍历线索二叉树
+重要说明：在遍历过程中，访问结点时，通过visit(current);函数，将当前结点的值打印出来。
+*/
+template <class T>
+void ThreadBinaryTree<T>::InOrder(ThreadBinaryTreeNode<T>* root)
+{
+    ThreadBinaryTreeNode<T>* at = root;
+    while (at->leftTag == 0) {
+        at = at->getLeftChild();
+    }
+    while (at) {
+        visit(at);
+        if (at->rightTag == 1) {
+            at = at->getRightChild();
+        }
+        else {
+            at = at->getRightChild();
+            while (at && at->leftTag == 0)
+                at = at->getLeftChild();
+        }
+    }
+}
+/*
+TODO:2.2-d 中序线索二叉树的插入操作,将newPointer插入到pointer中。
+*/
+template <class T>
+void ThreadBinaryTree<T>::InsertNode(ThreadBinaryTreeNode<T>* pointer, ThreadBinaryTreeNode<T>* newPointer)
+{
+    if (pointer->getRightChild() == NULL) {
+        pointer->setRightChild(newPointer);
+        newPointer->setLeftChild(pointer);
+        newPointer->leftTag = 1;
+        newPointer->rightTag = 1;
+        newPointer->setRightChild(NULL);
+    }
+    else {
+        ThreadBinaryTreeNode<T>* right = pointer->getRightChild();
+        pointer->setRightChild(newPointer);
+        newPointer->setLeftChild(pointer);
+        newPointer->leftTag = 1;
+        newPointer->rightTag = 0;
+        newPointer->setRightChild(right);
+        ThreadBinaryTreeNode<T>* at = right;
+        while (at && at->leftTag == 0)
+            at = at->getLeftChild();
+        at->setLeftChild(newPointer);
+        at->leftTag = 1;
+    }
+}
+
+template <class T>
+void ThreadBinaryTree<T>::deleteTree(ThreadBinaryTreeNode<T>* root)
+{
+    if (root != NULL) {
+        deleteTree(root->leftChild);
+        deleteTree(root->rightChild);
+        delete root;
+    }
+}
+
+template <class T>
+void ThreadBinaryTree<T>::visit(ThreadBinaryTreeNode<T>* current)
+{
+    cout << current->element;
+}
+
+int main()
+{
+    ThreadBinaryTreeNode<char>* root = NULL, * temp;
+    ThreadBinaryTree<char> arr;
+    string prestr = "ABCDEFG";
+    string instr = "CBEDAFG";
+    getline(cin, prestr);
+    getline(cin, instr);
+    root = arr.buildPreAndIn(prestr, instr);
+    arr.createInThread(root);
+    arr.InOrder(root);
+    cout << endl;
+    temp = new ThreadBinaryTreeNode<char>('H');
+    arr.InsertNode(root, temp);
+    arr.InOrder(root);
+    cout << endl;
+    return 0;
+}
