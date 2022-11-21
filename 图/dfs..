@@ -1,0 +1,640 @@
+#include <algorithm>
+#include <iostream>
+#include <map>
+#include <queue>
+#include <set>
+#include <vector>
+using namespace std;
+
+const int MAX_VALUE = 10005;
+
+class Edge {
+   public:
+    int start;
+    int end;
+    int weight;
+    Edge(int start, int end, int weight) {
+        this->start = start;
+        this->end = end;
+        this->weight = weight;
+    }
+    bool operator<(const Edge& e) const { return weight < e.weight; }
+
+    bool operator<=(const Edge& e) const { return weight <= e.weight; }
+};
+
+class Graph {
+   private:
+    int numOfEdge = 0;//图边数 
+    int numOfVertex = 0;//图顶点数 
+    int** matrix;
+    bool* visited;
+    void depthFirstTraverse(int num);
+    bool depthFirstLoopTraverse(int num);
+    bool breadthFirstLoopSearch(int num);
+    bool hasOutEdge(int index);
+    void breadthFirstSearch(int start);
+    int getValidEdge();
+    bool allVisited();
+    void loopTraverse(int num, int* trace, int len);
+
+   public:
+    explicit Graph(Graph* graph);
+    explicit Graph(int numOfVertex);
+    ~Graph();
+    void display();
+    bool addEdge(int start, int end, int weight);
+    bool deleteEdge(int start, int end);
+    bool addDoubleEdge(int start, int end, int weight);
+    bool deleteDoubleEdge(int start, int end);
+    void depthFirstSearch();
+    void breadthFirstSearch();
+    bool hasLoop();
+    Graph* PrimAlgorithm();
+    Graph* KruskalAlgorithm();
+    int countEdge();
+    bool hasEdge(int index);
+    Graph* FloydAlgorithm();
+    int DijkstraAlgorithm(int start, int end);
+    bool hasDoubleLoop();
+    bool allConnected();
+    bool getLoop();
+};
+
+void Graph::display() {
+    for (int i = 0; i < numOfVertex; i++) {
+        for (int j = 0; j < numOfVertex; j++) {
+            if (matrix[i][j] != MAX_VALUE)
+                cout << matrix[i][j] << " ";
+            else
+                cout << "#"
+                     << " ";
+        }
+        cout << endl;
+    }
+}
+
+int Graph::countEdge() {
+    int count = 0;
+    if (matrix == nullptr)
+        return -1;
+
+    for (int i = 0; i < numOfVertex; i++) {
+        for (int j = 0; j < numOfVertex; j++) {
+            if (matrix[i][j] != MAX_VALUE)
+                count++;
+        }
+    }
+
+    this->numOfEdge = count;
+    return this->numOfEdge;
+}
+
+Graph::~Graph() {
+    delete[] matrix;
+    delete visited;
+}
+
+bool Graph::addEdge(int start, int end, int weight) {
+    if (start >= numOfVertex || start < 0 || end >= numOfVertex || end < 0)
+        return false;
+
+    matrix[start][end] = weight;
+    this->countEdge();
+
+    return true;
+}
+
+Graph::Graph(int numOfVertex) {
+    this->numOfVertex = numOfVertex;
+    matrix = new int*[numOfVertex];
+
+    for (int i = 0; i < numOfVertex; i++)
+        matrix[i] = new int[numOfVertex];
+
+    for (int i = 0; i < numOfVertex; i++)
+        for (int j = 0; j < numOfVertex; j++)
+            matrix[i][j] = MAX_VALUE;
+
+    this->visited = new bool[numOfVertex];
+    for (int i = 0; i < numOfVertex; i++)
+        visited[i] = false;
+}
+
+Graph::Graph(Graph* graph) {
+    this->numOfVertex = graph->numOfVertex;
+    int** arr = graph->matrix;
+    this->matrix = new int*[numOfVertex];
+
+    for (int i = 0; i < numOfVertex; i++) {
+        matrix[i] = new int[numOfVertex];
+    }
+
+    for (int i = 0; i < numOfVertex; i++) {
+        for (int j = 0; j < numOfVertex; j++) {
+            this->matrix[i][j] = arr[i][j];
+        }
+    }
+
+    this->visited = new bool[numOfVertex];
+
+    for (int i = 0; i < numOfVertex; i++)
+        visited[i] = false;
+
+    this->countEdge();
+}
+
+void Graph::depthFirstSearch() {
+    this->visited = new bool[numOfVertex];
+
+    for (int i = 0; i < numOfVertex; i++)
+        visited[i] = false;
+
+    for (int i = 0; i < numOfVertex; i++) {
+        if (!visited[i] && hasEdge(i))
+            depthFirstTraverse(i);
+    }
+}
+
+void Graph::depthFirstTraverse(int num) {
+    this->visited[num] = true;
+    cout << num << " ";
+
+    for (int i = 0; i < numOfVertex; i++) {
+        if (i != num && matrix[num][i] != MAX_VALUE && !visited[i] &&
+            hasEdge(i))
+            depthFirstTraverse(i);
+    }
+}
+
+void Graph::breadthFirstSearch(int start) {
+    if (start < 0 || start >= numOfVertex)
+        return;
+
+    queue<int> que;
+    int temp;
+
+    if (!visited[start])
+        que.push(start);
+    else
+        return;
+
+    while (!que.empty()) {
+        temp = que.front();
+        que.pop();
+        if (visited[temp])
+            continue;
+        visited[temp] = true;
+        cout << temp << " ";
+
+        for (int i = 0; i < numOfVertex; i++) {
+            if (i != temp && matrix[temp][i] != MAX_VALUE && !visited[i]) {
+                que.push(i);
+            }
+        }
+    }
+}
+
+void Graph::breadthFirstSearch() {
+    this->visited = new bool[numOfVertex];
+
+    for (int i = 0; i < numOfVertex; i++)
+        visited[i] = false;
+
+    for (int i = 0; i < numOfVertex; i++) {
+        if (hasEdge(i) && !visited[i]) {
+            breadthFirstSearch(i);
+        }
+    }
+}
+
+Graph* Graph::PrimAlgorithm() {
+    auto* minimumSpanningTree = new Graph(numOfVertex);
+    map<int, Edge> trace;
+    set<int> points;
+    int maximum = getValidEdge();
+
+    for (int i = 0; i < numOfVertex; i++) {
+        if (hasEdge(i)) {
+            points.insert(i);
+            break;
+        }
+    }
+
+    while (minimumSpanningTree->getValidEdge() != maximum) {
+        trace.clear();
+        for (auto point : points) {
+            for (int i = 0; i < numOfVertex; i++) {
+                if (i != point && !points.count(i) &&
+                    matrix[point][i] != MAX_VALUE) {
+                    Edge edge(point, i, matrix[point][i]);
+                    trace.insert(pair<int, Edge>(matrix[point][i], edge));
+                }
+            }
+        }
+
+        auto it = trace.begin();
+        minimumSpanningTree->addEdge(it->second.start, it->second.end,
+                                     it->first);
+        points.insert(it->second.end);
+        if (minimumSpanningTree->hasLoop())
+            minimumSpanningTree->deleteEdge(it->second.start, it->second.end);
+    }
+
+    for (int i = 0; i < numOfVertex; i++) {
+        for (int j = 0; j < numOfVertex; j++) {
+            if (minimumSpanningTree->matrix[i][j] != MAX_VALUE)
+                minimumSpanningTree->matrix[j][i] =
+                    minimumSpanningTree->matrix[i][j];
+        }
+    }
+
+    return minimumSpanningTree;
+}
+
+bool Graph::hasLoop() {
+    if (matrix == nullptr)
+        return false;
+
+    this->visited = new bool[numOfVertex];
+    for (int i = 0; i < numOfVertex; i++)
+        visited[i] = false;
+
+    bool ans = true;
+    for (int i = 0; i < numOfVertex; i++) {
+        if (!visited[i] && hasOutEdge(i))
+            ans = ans && depthFirstLoopTraverse(i);
+    }
+
+    return !ans;
+}
+
+bool Graph::depthFirstLoopTraverse(int num) {
+    visited[num] = true;
+    bool ans = true;
+    for (int i = 0; i < numOfVertex; i++) {
+        if (i != num && hasEdge(i)) {
+            if (matrix[num][i] != MAX_VALUE && visited[i])
+                return false;
+            else if (matrix[num][i] == MAX_VALUE)
+                continue;
+            else if (matrix[num][i] != MAX_VALUE && !visited[i])
+                ans = ans && depthFirstLoopTraverse(i);
+        }
+    }
+
+    return ans;
+}
+
+bool Graph::hasEdge(int index) {
+    if (index < 0 || index >= numOfVertex)
+        return false;
+
+    for (int i = 0; i < numOfVertex; i++) {
+        if (matrix[index][i] != MAX_VALUE && i != index)
+            return true;
+        if (matrix[i][index] != MAX_VALUE && i != index)
+            return true;
+    }
+    return false;
+}
+
+bool Graph::deleteEdge(int start, int end) {
+    return this->addEdge(start, end, MAX_VALUE);
+}
+
+bool Graph::hasOutEdge(int index) {
+    if (index < 0 || index >= numOfVertex)
+        return false;
+
+    for (int i = 0; i < numOfVertex; i++) {
+        if (matrix[index][i] != MAX_VALUE && i != index)
+            return true;
+    }
+
+    return false;
+}
+
+int Graph::getValidEdge() {
+    int cnt = 0;
+    for (int i = 0; i < numOfVertex; i++) {
+        if (hasEdge(i))
+            cnt++;
+    }
+    return cnt;
+}
+
+bool Graph::addDoubleEdge(int start, int end, int weight) {
+    return addEdge(start, end, weight) && addEdge(end, start, weight);
+}
+
+bool Graph::deleteDoubleEdge(int start, int end) {
+    return deleteEdge(start, end) && deleteEdge(end, start);
+}
+
+Graph* Graph::KruskalAlgorithm() {
+    auto* minimumSpanningTree = new Graph(numOfVertex);
+    int maximum = this->getValidEdge();
+    vector<Edge> edges;
+    for (int i = 0; i < numOfVertex; i++) {
+        for (int j = i; j < numOfVertex; j++) {
+            if (i != j && matrix[i][j] != MAX_VALUE) {
+                Edge edge(i, j, matrix[i][j]);
+                edges.push_back(edge);
+            }
+        }
+    }
+
+    sort(edges.begin(), edges.end());
+
+    while (minimumSpanningTree->getValidEdge() != maximum ||
+           !(minimumSpanningTree->allConnected())) {
+        auto it = edges.begin();
+
+        minimumSpanningTree->addDoubleEdge(it->start, it->end, it->weight);
+
+        if (minimumSpanningTree->hasDoubleLoop())
+            minimumSpanningTree->deleteDoubleEdge(it->start, it->end);
+
+        edges.erase(it);
+    }
+
+    return minimumSpanningTree;
+}
+
+Graph* Graph::FloydAlgorithm() {
+    auto* dist = new Graph(this);
+    Graph* temp;
+    temp = new Graph(dist);
+
+    for (int i = 0; i < numOfVertex; i++)
+        temp->matrix[i][i] = 0;
+
+    int count = this->numOfVertex;
+
+    for (int k = 0; k < count; k++) {
+        for (int i = 0; i < count; i++) {
+            for (int j = 0; j < count; j++) {
+                if (temp->matrix[i][j] >
+                    temp->matrix[i][k] + temp->matrix[k][j])
+                    temp->matrix[i][j] =
+                        temp->matrix[i][k] + temp->matrix[k][j];
+            }
+        }
+    }
+
+    dist = new Graph(temp);
+    return dist;
+}
+
+int Graph::DijkstraAlgorithm(int start, int end) {
+    if (start < 0 || start >= numOfVertex || end < 0 || end >= numOfVertex)
+        return -1;
+    if (start == end)
+        return 0;
+
+    int* dist = new int[numOfVertex];
+    int* prev = new int[numOfVertex];
+    visited = new bool[numOfVertex];
+
+    for (int i = 0; i < numOfVertex; i++) {
+        dist[i] = MAX_VALUE;
+        prev[i] = -1;
+        visited[i] = false;
+    }
+    map<int, int> minWeight;
+    int now = start;
+    dist[now] = 0;
+    while (!allVisited()) {
+        minWeight.clear();
+        visited[now] = true;
+        for (int i = 0; i < numOfVertex; i++) {
+            if (i != now && matrix[now][i] != MAX_VALUE && !visited[i]) {
+                if (matrix[now][i] + dist[now] < dist[i]) {
+                    dist[i] = matrix[now][i] + dist[now];
+                    prev[i] = now;
+                }
+            }
+        }
+
+        for (int i = 0; i < numOfVertex; i++) {
+            if (!visited[i] && hasEdge(i) && dist[i] != MAX_VALUE) {
+                minWeight[dist[i]] = i;
+            }
+        }
+
+        auto it = minWeight.begin();
+        now = it->second;
+    }
+
+    int temp = end;
+    cout << temp << " ";
+
+    for (int i = 0; i < numOfVertex - 1; i++) {
+        if (temp != -1) {
+            temp = prev[temp];
+            cout << temp << " ";
+        }
+    }
+
+    cout << endl;
+    for (int i = 0; i < numOfVertex; i++) {
+        if (hasEdge(i))
+            cout << start << " -> " << i << " = " << dist[i] << endl;
+    }
+
+    return dist[end];
+}
+
+bool Graph::allVisited() {
+    for (int i = 0; i < numOfVertex; i++) {
+        if (hasEdge(i) && !visited[i])
+            return false;
+    }
+    return true;
+}
+
+bool Graph::hasDoubleLoop() {
+    bool ans = true;
+    this->visited = new bool[numOfVertex];
+
+    for (int i = 0; i < numOfVertex; i++)
+        visited[i] = false;
+
+    for (int i = 0; i < numOfVertex; i++) {
+        if (hasEdge(i) && !visited[i]) {
+            ans = ans && breadthFirstLoopSearch(i);
+        }
+    }
+    return !ans;
+}
+
+bool Graph::breadthFirstLoopSearch(int num) {
+    if (num < 0 || num >= numOfVertex)
+        return false;
+    queue<int> que;
+    int temp;
+    int prev = -1;
+
+    if (!visited[num])
+        que.push(num);
+    else
+        return false;
+
+    while (!que.empty()) {
+        temp = que.front();
+        que.pop();
+        if (visited[temp])
+            continue;
+        visited[temp] = true;
+
+        for (int i = 0; i < numOfVertex; i++) {
+            if (visited[i] && i != temp && i != prev) {
+                if (matrix[temp][i] != MAX_VALUE)
+                    return false;
+            }
+        }
+
+        for (int i = 0; i < numOfVertex; i++) {
+            if (i != temp && matrix[temp][i] != MAX_VALUE && !visited[i]) {
+                que.push(i);
+            }
+        }
+
+        prev = temp;
+    }
+
+    return true;
+}
+
+bool Graph::allConnected() {
+    this->visited = new bool[numOfVertex];
+    for (int i = 0; i < numOfVertex; i++)
+        visited[i] = false;
+
+    vector<int> sum;
+    int num = this->getValidEdge();
+    int start;
+    for (int i = 0; i < numOfVertex; i++) {
+        if (hasEdge(i)) {
+            start = i;
+            break;
+        }
+    }
+
+    queue<int> que;
+    int temp;
+    que.push(start);
+
+    while (!que.empty()) {
+        temp = que.front();
+        que.pop();
+        if (visited[temp])
+            continue;
+        visited[temp] = true;
+        sum.push_back(temp);
+
+        for (int i = 0; i < numOfVertex; i++) {
+            if (i != temp && matrix[temp][i] != MAX_VALUE && !visited[i]) {
+                que.push(i);
+            }
+        }
+    }
+
+    return sum.size() == num;
+}
+
+int* addArray(const int* arr, int num, int len) {
+    int* ans = new int[len + 1];
+
+    for (int i = 0; i < len; i++)
+        ans[i] = arr[i];
+
+    ans[len] = num;
+    return ans;
+}
+
+bool Graph::getLoop() {
+    if (!(this->hasLoop()))
+        return false;
+    this->visited = new bool[numOfVertex];
+
+    for (int i = 0; i < numOfVertex; i++)
+        visited[i] = false;
+
+    for (int i = 0; i < numOfVertex; i++) {
+        if (!visited[i] && hasOutEdge(i))
+            loopTraverse(i, addArray(new int[0], i, 0), 1);
+    }
+
+    return true;
+}
+
+void Graph::loopTraverse(int num, int* trace, int len) {
+    visited[num] = true;
+
+    for (int i = 0; i < numOfVertex; i++) {
+        if (i != num && hasEdge(i)) {
+            if (matrix[num][i] != MAX_VALUE && visited[i]) {
+                for (int j = 0; j < len; j++) {
+                    cout << trace[j] << " ";
+                }
+
+                return;
+            } else if (matrix[num][i] == MAX_VALUE)
+                continue;
+            else if (matrix[num][i] != MAX_VALUE && !visited[i])
+                loopTraverse(i, addArray(trace, i, len), len + 1);
+        }
+    }
+}
+
+int main() {
+    auto* graph = new Graph(4);
+    graph->addDoubleEdge(0, 1, 1);
+    graph->deleteDoubleEdge(0, 1);
+    graph->addDoubleEdge(0, 1, 1);
+    graph->addDoubleEdge(1, 2, 2);
+    graph->addDoubleEdge(2, 3, 1);
+    graph->addDoubleEdge(3, 0, 2);
+    graph->display();
+    cout << "DepthFirstSearch:" << endl;
+    graph->depthFirstSearch();
+    cout << endl;
+    cout << "BreadthFirstSearch:" << endl;
+    graph->breadthFirstSearch();
+    cout << endl;
+    auto* tmp = graph->PrimAlgorithm();
+    cout << "PrimAlgorithm:" << endl;
+    tmp->display();
+    auto* min = graph->KruskalAlgorithm();
+    cout << "KruskalAlgorithm:" << endl;
+    min->display();
+    auto* dist = graph->FloydAlgorithm();
+    cout << "FloydAlgorithm:" << endl;
+    dist->display();
+    cout << "DijkstraAlgorithm:" << endl;
+    int start = 0, end = 2;
+    graph->DijkstraAlgorithm(start, end);
+
+    auto* graph2 = new Graph(6);
+
+    graph2->addEdge(0, 1, 2);
+    graph2->addEdge(0, 5, 3);
+    graph2->addEdge(1, 2, 3);
+    graph2->addEdge(1, 3, 2);
+    graph2->addEdge(2, 0, 4);
+    graph2->addEdge(2, 4, 4);
+    graph2->addEdge(3, 0, 1);
+    graph2->addEdge(3, 4, 1);
+    graph2->addEdge(4, 1, 1);
+    graph2->addEdge(5, 2, 2);
+    graph2->addEdge(4, 5, 3);
+    graph2->addEdge(5, 3, 5);
+    graph2->display();
+    cout << "The loop in Graph2:" << endl;
+    auto* g = graph2->FloydAlgorithm();
+    g->display();
+
+    return 0;
+}
