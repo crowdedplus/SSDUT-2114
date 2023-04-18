@@ -1,1 +1,1 @@
-# code for data structures and algorithms
+# Soft 2114 class data sharing platform
